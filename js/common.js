@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function() {
 
 });
-var currentMunu = null;
+var currentMenu = null;
 var menuPath = [];
 var contextMenu = document.getElementById("context-menu");
 document.addEventListener("click", function(e) {
@@ -9,8 +9,23 @@ document.addEventListener("click", function(e) {
 		var list = document.getElementById("main");
 		if( list.style.display == 'none' || !list.style.display ) {
 			list.style.display = 'inline-block';
-			list.style.top = (e.pageY - 25) + 'px';
-			list.style.left = (e.pageX - 10) + 'px';
+			console.log('height of menu: ', list.offsetHeight);
+			console.log('X: ' + e.pageX + ' Y: ' + e.pageY);
+			console.log('window height: ', window.innerHeight);
+			if(window.innerWidth - e.pageX < list.offsetWidth) {
+				console.log('not visible');
+				list.style.left = (e.pageX - list.offsetWidth) + 'px';
+			} else {
+				list.style.left = (e.pageX - 10) + 'px';
+			}
+			if(window.innerHeight - e.pageY < list.offsetHeight) {
+				console.log('not visible bottom');
+				list.style.top = (e.pageY - list.offsetHeight) + 'px';
+			} else {
+				list.style.top = (e.pageY - 25) + 'px';
+			}
+			
+			
 			menuPath.push(list);
 		} else {
 			Array.prototype.slice.call( contextMenu.getElementsByTagName('UL') ).forEach(function(elem){
@@ -26,9 +41,9 @@ document.addEventListener("click", function(e) {
 	}
 });
 contextMenu.addEventListener('click', function(e) {
-	var firstItem = currentMunu.getElementsByTagName('li')[1];
-	var lastItem = currentMunu.getElementsByTagName('li').length - 2; // get index of last element
-	lastItem = currentMunu.getElementsByTagName('li')[lastItem];
+	var firstItem = currentMenu.getElementsByTagName('li')[1];
+	var lastItem = currentMenu.getElementsByTagName('li').length - 2; // get index of last element
+	lastItem = currentMenu.getElementsByTagName('li')[lastItem];
 	var compStyles = getComputedStyle(firstItem);
 
 	if (e.target.classList.contains('disabled')) {
@@ -40,7 +55,7 @@ contextMenu.addEventListener('click', function(e) {
 	if(e.target.classList.contains('up')) {
 		console.log('move up');
 		var scrolVal = 0;
-		Array.prototype.slice.call(currentMunu.getElementsByTagName('li') ).forEach(function(elem){
+		Array.prototype.slice.call(currentMenu.getElementsByTagName('li') ).forEach(function(elem){
 			if(elem.offsetTop < 0) {
 				scrolVal = -elem.offsetTop;
 				console.log('offset Top', scrolVal);
@@ -51,32 +66,32 @@ contextMenu.addEventListener('click', function(e) {
 		if (firstItem.offsetTop > 0) {
 			e.target.parentElement.style.display = 'none';
 		}
-		if( lastItem.offsetTop + lastItem.offsetHeight > currentMunu.offsetHeight ) {
-			currentMunu.getElementsByClassName('down')[0].style.display = 'block';
+		if( lastItem.offsetTop + lastItem.offsetHeight > currentMenu.offsetHeight ) {
+			currentMenu.getElementsByClassName('down')[0].style.display = 'block';
 		}
 	}
 	if(e.target.classList.contains('down')) {
 		console.log('move down');
 		var scrolVal = 0;
-		Array.prototype.slice.call(currentMunu.getElementsByTagName('li') ).some(function(elem){
-			if( elem.offsetTop + elem.offsetHeight > currentMunu.offsetHeight ) {
+		Array.prototype.slice.call(currentMenu.getElementsByTagName('li') ).some(function(elem){
+			if( elem.offsetTop + elem.offsetHeight > currentMenu.offsetHeight ) {
 				console.log('first bottom elem');
-				scrolVal = elem.offsetTop + elem.offsetHeight - currentMunu.offsetHeight;
+				scrolVal = elem.offsetTop + elem.offsetHeight - currentMenu.offsetHeight;
 				return true;
 			}
 		});
 		firstItem.style.marginTop = parseInt(compStyles.marginTop) - (scrolVal + 15)  + 'px';
-		if( lastItem.offsetTop + lastItem.offsetHeight < currentMunu.offsetHeight) {
+		if( lastItem.offsetTop + lastItem.offsetHeight < currentMenu.offsetHeight) {
 			e.target.parentElement.style.display = 'none';
 			console.log('end');
 		}
 		if(firstItem.offsetTop < 0) {
-			currentMunu.getElementsByClassName('up')[0].style.display = 'block';
+			currentMenu.getElementsByClassName('up')[0].style.display = 'block';
 		}
 	}
 });
 contextMenu.addEventListener('mouseover', function(e){
-	if(!currentMunu) {
+	if(!currentMenu) {
 		target = e.target;
 		while(target != this) {
 			if(target.tagName == 'UL') {
@@ -84,8 +99,8 @@ contextMenu.addEventListener('mouseover', function(e){
 			} 
 			target = target.parentNode;
 		}
-		currentMunu = target;
-		var menuIndex = menuPath.indexOf(currentMunu);
+		currentMenu = target;
+		var menuIndex = menuPath.indexOf(currentMenu);
 
 		if( menuIndex > -1 ) {
 			for(var i = menuIndex + 1; i < menuPath.length; i++) {
@@ -97,25 +112,14 @@ contextMenu.addEventListener('mouseover', function(e){
 			menuPath.splice(menuIndex + 1);
 			
 		} else {
-			menuPath.push(currentMunu);
+			menuPath.push(currentMenu);
 		}			
 	}
 	if( !e.target.classList.contains('disabled') ) {
 		var target = e.target;
 		while(target != this) {
 			if(target.tagName == 'LI') {
-				var items = Array.prototype.slice.call( target.parentElement.getElementsByTagName('li') );
-				items.forEach(function(el, i) {
-					el.style.background = 'transparent';
-					if( el.getElementsByClassName('arrow')[0] ) {
-						Array.prototype.slice.call( contextMenu.getElementsByTagName('ul') ).forEach(function(elem){
-							if( +elem.getAttribute('data-number') == +el.getAttribute('data-number') 
-								&& +elem.getAttribute('data-menu-level') == +el.parentElement.getAttribute('data-menu-level') + 1 ) {
-							elem.style.display = 'none';
-							}
-						});
-					}
-				});
+				hideMenuWithSub(target.parentElement);
 				target.style.background = '#26ece3'; 
 				// Show submenu
 				if(target.getElementsByClassName('arrow')[0] ) {
@@ -131,8 +135,21 @@ contextMenu.addEventListener('mouseover', function(e){
 					if(dropList) {
 						var rect = target.getBoundingClientRect();
 						dropList.style.display = 'block';
-						dropList.style.top = (rect.top - 20) + 'px';
-						dropList.style.left = rect.left + rect.width + 'px';
+						console.log('window width: ', window.innerWidth);
+						console.log('submenu width: ', dropList.offsetWidth);
+						console.log('offset width: ', currentMenu.offsetWidth);
+						if(window.innerWidth < currentMenu.offsetWidth + currentMenu.offsetLeft + dropList.offsetWidth) {
+							console.log('ne vlazuTb');
+							dropList.style.left = rect.left - rect.width + 'px';
+						} else {
+							dropList.style.left = rect.left + rect.width + 'px';
+						}
+						if(window.innerHeight < currentMenu.offsetHeight + currentMenu.offsetTop + dropList.offsetHeight) {
+							console.log('ne vlazuTb');
+							dropList.style.top = rect.top - dropList.offsetHeight + 'px';
+						} else {
+							dropList.style.top = (rect.top - 20) + 'px';
+						}						
 					}
 				}
 				target = null;				
@@ -142,40 +159,90 @@ contextMenu.addEventListener('mouseover', function(e){
 		}
 		target = null;
 	}
-
 });
-
 document.getElementById("context-menu").addEventListener('mouseout', function(e) {
-	if(!currentMunu) return;
+	if(!currentMenu) return;
 	var relatedTarget = e.relatedTarget;
+	var relatedList;
 	if(relatedTarget) {
 		while(relatedTarget) {
-			if(relatedTarget == currentMunu) return;
+			if(relatedTarget == currentMenu) return;
+			if(relatedTarget.tagName == 'UL') relatedList = relatedTarget;
 			if(relatedTarget.id == 'context-menu') {
 				console.log('move inside menu');
-				currentMunu = null;
+				if (menuPath.indexOf(relatedList) != -1 ) {
+					console.log('existing list');
+					hideMenuWithSub(currentMenu);
+				}
+				currentMenu = null;
 				return;
-			};
+			} 
 			relatedTarget = relatedTarget.parentNode;
 		}
 	}
 	if(!menuPath) {
-		Array.prototype.slice.call(menuPath[menuPath.length - 1].getElementsByTagName('li') ).forEach(function(el, i) {
-			el.style.background = 'transparent';
-			if( el.getElementsByClassName('arrow')[0] ) {
-				Array.prototype.slice.call( contextMenu.getElementsByTagName('ul') ).forEach(function(elem){
-					if( +elem.getAttribute('data-number') == +el.getAttribute('data-number') 
-						&& +elem.getAttribute('data-menu-level') == +el.parentElement.getAttribute('data-menu-level') + 1 ) {
-						elem.style.display = 'none';
-					}
-				});
-			}
-		});		
+		
+		hideMenuWithSub(menuPath[menuPath.length - 1]);
 	};
-	currentMunu = null;
+	hideMenuWithSub(currentMenu);
+	currentMenu = null;
 });
 
-var menuObject = '{"item 1": true,"item 2":true,"item3":true, "item 4": {"b item 1":true, "b item 2":false,"b item 3":true}}';
+function hideMenuWithSub(menu) {
+	Array.prototype.slice.call(menu.getElementsByTagName('li') ).forEach(function(el, i) {
+		el.style.background = 'transparent';
+		if( el.getElementsByClassName('arrow')[0] ) {
+			Array.prototype.slice.call( contextMenu.getElementsByTagName('ul') ).forEach(function(elem){
+				if( +elem.getAttribute('data-number') == +el.getAttribute('data-number') 
+					&& +elem.getAttribute('data-menu-level') == +el.parentElement.getAttribute('data-menu-level') + 1 ) {
+					elem.style.display = 'none';
+				}
+			});
+		}
+	});
+}
+var menuObject = 
+'{\
+	"item 1": true,\
+	"item 2":true,\
+	"item 3":true, \
+	"item 4": {\
+		"L2 item 1":true, \
+		"L2 item 2":false,\
+		"L2 item 3":true,\
+		"L2 item 4":true, \
+		"L2 item 5":{\
+			"L3 item 1":true, \
+			"L3 item 2":false,\
+			"L3 item 3":true,\
+			"L3 item 4":{\
+				"L4 item 1":true, \
+				"L4 item 2":false,\
+				"L4 item 3":true,\
+				"L4 item 4": false\
+			},\
+			"L3 item 5":false,\
+			"L3 item 6":true,\
+			"L3 item 7":true\
+		},\
+		"L2 item 6":true,\
+		"L2 item 7":true, \
+		"L2 item 8":false,\
+		"L2 item 9":true\
+	},\
+	"item 5": {\
+		"L2 item 1":true, \
+		"L2 item 2":false,\
+		"L2 item 3":true,\
+		"L2 item 4":true, \
+		"L2 item 5":false,\
+		"L2 item 6":true,\
+		"L2 item 7":true\
+	},\
+	"item 6":true,\
+	"item 7":true, \
+	"item 8": true\
+}';
 
 
 function initMenu(JSONobject) {
@@ -183,21 +250,20 @@ function initMenu(JSONobject) {
 	var elem = document.createElement('ul');
 	var container = document.getElementById('context-menu');
 	container.innerHTML = '';
-	console.log(menu);
 
-
-	renderMenu(1, 0, menu, container);
+	renderMenu(0, 0, menu, container);
 
 	function renderMenu(level, dataNumber, menu, DOMelement) {
 		var container = document.createElement('ul');
 		var item, arrow;
 		var i = 0;
+		level++;
 
 		container.setAttribute('data-menu-level', level + '');
-		container.setAttribute('data-number', dataNumber + '');
 		if(level == 1) {
 			container.setAttribute('id', 'main');
 		}
+		container.setAttribute('data-number', dataNumber + '');
 		item = document.createElement('li');
 		item.setAttribute('class', 'up');
 		arrow = document.createElement('span');
@@ -206,13 +272,12 @@ function initMenu(JSONobject) {
 		item.appendChild(arrow);
 		container.appendChild(item);
 		for(var key in menu) {
-			console.log('level ' + level + ' item: ' + key);
 			item = document.createElement('li');
 			item.setAttribute('data-number', i + '');
 			item.innerHTML = key + '';
 
 			if( typeof(menu[key]) === 'object' ) {
-				renderMenu(++level, i, menu[key], DOMelement);
+				renderMenu(level, i, menu[key], DOMelement);
 				arrow = document.createElement('span');
 				arrow.setAttribute('class', 'arrow');
 				arrow.innerHTML = '&#9658;';
@@ -229,7 +294,7 @@ function initMenu(JSONobject) {
 		item.appendChild(arrow);
 		container.appendChild(item);
 		DOMelement.appendChild(container);
+
 	}
 }
-
 initMenu(menuObject);
